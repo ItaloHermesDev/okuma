@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1440 720" role="img">
+  <rect width="1440" height="720" fill="#090909"/>
+  <rect y="620" width="1440" height="18" fill="#f5c518"/>
+  <text x="90" y="250" fill="#f5c518" font-family="Arial, sans-serif" font-size="28" letter-spacing="12">OKUMA</text>
+  <text x="90" y="390" fill="#ffffff" font-family="Arial, sans-serif" font-size="108">NOVA COLEÇÃO</text>
+  <text x="90" y="470" fill="#d4d4d4" font-family="Arial, sans-serif" font-size="36">Estoque pronto para sair hoje</text>
+</svg>

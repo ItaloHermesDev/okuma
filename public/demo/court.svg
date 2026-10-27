@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 800" role="img">
+  <rect width="800" height="800" fill="#141414"/>
+  <text x="64" y="120" fill="#f5c518" font-family="Arial, sans-serif" font-size="28" letter-spacing="10">OKUMA</text>
+  <text x="64" y="190" fill="#ffffff" font-family="Arial, sans-serif" font-size="72">COURT</text>
+  <path d="M120 470c30-90 120-150 230-145 90 4 170 28 280 95 28 18 34 46 8 66H168c-36 0-58-18-48-16z" fill="#f7f7f7"/>
+  <path d="M150 545h520c18 36-8 58-48 58H188c-42 0-58-24-38-58z" fill="#f5c518"/>
+  <path d="M250 430c40 20 70 48 78 78" fill="none" stroke="#111" stroke-width="8"/>
+</svg>

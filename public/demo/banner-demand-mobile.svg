@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 1100" role="img">
+  <rect width="800" height="1100" fill="#101820"/>
+  <rect y="1040" width="800" height="16" fill="#f5c518"/>
+  <text x="48" y="280" fill="#f5c518" font-family="Arial, sans-serif" font-size="24" letter-spacing="10">OKUMA</text>
+  <text x="48" y="430" fill="#ffffff" font-family="Arial, sans-serif" font-size="72">SOB</text>
+  <text x="48" y="530" fill="#ffffff" font-family="Arial, sans-serif" font-size="72">DEMANDA</text>
+  <text x="48" y="640" fill="#d4d4d4" font-family="Arial, sans-serif" font-size="32">Prazo no WhatsApp</text>
+</svg>

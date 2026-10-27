@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 800" role="img">
+  <rect width="800" height="800" fill="#0d1b2a"/>
+  <text x="64" y="120" fill="#f5c518" font-family="Arial, sans-serif" font-size="28" letter-spacing="10">OKUMA</text>
+  <text x="64" y="190" fill="#ffffff" font-family="Arial, sans-serif" font-size="72">RUNNER</text>
+  <path d="M110 490c40-110 150-170 260-150 100 16 190 40 290 110 24 16 20 48-8 62H160c-40 0-62-22-50-22z" fill="#1d4e89"/>
+  <path d="M145 555h530c16 34-10 54-46 54H186c-40 0-56-22-41-54z" fill="#f5c518"/>
+  <path d="M300 430c60 10 90 40 100 90" fill="none" stroke="#d7e6f5" stroke-width="8"/>
+</svg>
