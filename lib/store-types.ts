@@ -16,7 +16,6 @@ export const SHOE_SIZES = [
 
 export const ORDER_STATUSES = [
   "solicitado",
-  "aguardando_pagamento",
   "confirmado",
   "em_separacao",
   "enviado",
@@ -25,9 +24,20 @@ export const ORDER_STATUSES = [
   "rejeitado",
 ] as const;
 
+export const PAYMENT_STATUSES = [
+  "aguardando",
+  "pago",
+  "recusado",
+  "expirado",
+  "cancelado",
+  "estornado",
+  "contestado",
+] as const;
+
 export type ShoeSize = (typeof SHOE_SIZES)[number];
 export type SupplyType = "estoque" | "sob_demanda";
 export type OrderStatus = (typeof ORDER_STATUSES)[number];
+export type PaymentStatus = (typeof PAYMENT_STATUSES)[number];
 
 export type SizeOption = {
   id: number;
@@ -122,6 +132,8 @@ export type OrderView = {
   customerName: string;
   customerPhone: string;
   status: OrderStatus;
+  paymentStatus: PaymentStatus;
+  paymentEvent: string | null;
   total: number;
   createdAt: string;
   trackingCode: string;

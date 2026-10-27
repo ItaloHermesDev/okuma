@@ -1,15 +1,7 @@
 import Link from "next/link";
-import { formatBrl, formatDate, formatPhone, statusLabel, supplyLabel } from "@/lib/format";
-import type { OrderStatus, OrderView } from "@/lib/store-types";
-
-const STEPS: OrderStatus[] = [
-  "solicitado",
-  "aguardando_pagamento",
-  "confirmado",
-  "em_separacao",
-  "enviado",
-  "entregue",
-];
+import { OrderTimeline, PaymentStatusCard } from "@/components/order-progress";
+import { formatBrl, formatDate, formatPhone, supplyLabel } from "@/lib/format";
+import type { OrderView } from "@/lib/store-types";
 
 export function OrderSummary({
   order,
@@ -18,38 +10,26 @@ export function OrderSummary({
   order: OrderView;
   whatsappUrl?: string | null;
 }) {
-  const current = STEPS.indexOf(order.status);
-
   return (
     <article className="border border-white/10 p-5">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <Link href={`/pedidos/${order.code}`} className="text-sm text-white/50">
+          <Link href={`/pedidos/${order.code}`} className="text-xl font-semibold">
             {order.code}
           </Link>
-          <h2 className="mt-1 text-xl font-semibold">{statusLabel(order.status)}</h2>
           <p className="mt-1 text-sm text-white/50">{formatDate(order.createdAt)}</p>
         </div>
         <p className="text-xl font-semibold">{formatBrl(order.total)}</p>
       </div>
-      {order.status === "cancelado" || order.status === "rejeitado" ? (
-        <p className="mt-5 text-sm text-red-400">
-          {order.status === "rejeitado"
-            ? "A loja rejeitou este pedido."
-            : "Este pedido foi cancelado."}
-        </p>
-      ) : (
-        <ol className="mt-5 grid grid-cols-2 gap-3 text-xs sm:grid-cols-3">
-          {STEPS.map((step, index) => (
-            <li key={step} className={index <= current ? "text-[#f5c518]" : "text-white/35"}>
-              <span
-                className={`mb-2 block h-1 ${index <= current ? "bg-[#f5c518]" : "bg-white/15"}`}
-              />
-              {statusLabel(step)}
-            </li>
-          ))}
-        </ol>
-      )}
+      <div className="mt-5 grid items-start gap-3 sm:grid-cols-2">
+        <PaymentStatusCard status={order.paymentStatus} event={order.paymentEvent} />
+        <section className="border border-white/10 p-4">
+          <p className="text-xs tracking-wide text-white/40 uppercase">Andamento</p>
+          <div className="mt-4">
+            <OrderTimeline status={order.status} />
+          </div>
+        </section>
+      </div>
       <ul className="mt-5 space-y-4">
         {order.items.map((item, index) => (
           <li key={`${item.productName}-${item.sizeLabel}-${index}`} className="text-sm leading-6">
@@ -73,7 +53,10 @@ export function OrderSummary({
         {order.customerName} · {formatPhone(order.customerPhone)}
       </p>
       {order.paymentUrl &&
-      (order.status === "aguardando_pagamento" || order.status === "solicitado") ? (
+      order.paymentStatus === "aguardando" &&
+      order.status !== "cancelado" &&
+      order.status !== "rejeitado" &&
+      order.status !== "entregue" ? (
         <a
           href={order.paymentUrl}
           className="mt-5 inline-flex h-11 items-center bg-[#f5c518] px-4 font-semibold text-black"

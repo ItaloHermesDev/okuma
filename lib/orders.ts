@@ -1,15 +1,17 @@
 import "server-only";
 import type { ResultSetHeader, RowDataPacket } from "mysql2/promise";
 import { getCurrentAdmin } from "./auth";
+import { publicCheckoutUrl } from "./checkout-url";
 import { ensureDatabase, getPool } from "./database";
 import { sellingPrice } from "./format";
 import type {
   OrderItemView,
   OrderStatus,
   OrderView,
+  PaymentStatus,
   SupplyType,
 } from "./store-types";
-import { ORDER_STATUSES } from "./store-types";
+import { ORDER_STATUSES, PAYMENT_STATUSES } from "./store-types";
 
 export class OrderError extends Error {}
 
@@ -18,7 +20,9 @@ type OrderRow = RowDataPacket & {
   code: string;
   customer_name: string;
   customer_phone: string;
-  status: OrderStatus;
+  status: string;
+  payment_status: string | null;
+  payment_event: string | null;
   total: string;
   created_at: Date | string;
   stock_held: number;
@@ -71,7 +75,27 @@ function timestamp(value: Date | string) {
 }
 
 const ORDER_COLUMNS =
-  "id, code, customer_name, customer_phone, status, total, created_at, stock_held, tracking_code, payment_receipt, asaas_payment_url";
+  "id, code, customer_name, customer_phone, status, payment_status, payment_event, total, created_at, stock_held, tracking_code, payment_receipt, asaas_payment_url";
+
+function orderStatus(value: string): OrderStatus {
+  if (value === "aguardando_pagamento") {
+    return "solicitado";
+  }
+
+  if ((ORDER_STATUSES as readonly string[]).includes(value)) {
+    return value as OrderStatus;
+  }
+
+  return "solicitado";
+}
+
+function paymentStatus(value: string | null | undefined): PaymentStatus {
+  if (value && (PAYMENT_STATUSES as readonly string[]).includes(value)) {
+    return value as PaymentStatus;
+  }
+
+  return "aguardando";
+}
 
 function mapItems(rows: ItemRow[]): OrderItemView[] {
   return rows.map((row) => ({
@@ -113,12 +137,14 @@ async function attachItems(orders: OrderRow[]): Promise<OrderView[]> {
     code: order.code,
     customerName: order.customer_name,
     customerPhone: order.customer_phone,
-    status: order.status,
+    status: orderStatus(order.status),
+    paymentStatus: paymentStatus(order.payment_status),
+    paymentEvent: order.payment_event,
     total: Number(order.total),
     createdAt: timestamp(order.created_at),
     trackingCode: order.tracking_code ?? "",
     paymentReceipt: order.payment_receipt,
-    paymentUrl: order.asaas_payment_url,
+    paymentUrl: publicCheckoutUrl(order.asaas_payment_url),
     items: mapItems(byOrder.get(order.id) ?? []),
   }));
 }
@@ -274,8 +300,9 @@ export async function createOrder(input: {
 
       try {
         const [created] = await connection.query<ResultSetHeader>(
-          `INSERT INTO orders (code, customer_name, customer_phone, status, total, stock_held)
-           VALUES (?, ?, ?, 'aguardando_pagamento', ?, ?)`,
+          `INSERT INTO orders
+            (code, customer_name, customer_phone, status, payment_status, total, stock_held)
+           VALUES (?, ?, ?, 'solicitado', 'aguardando', ?, ?)`,
           [code, input.name, input.phone, total, holdsStock ? 1 : 0],
         );
         orderId = created.insertId;
@@ -322,7 +349,9 @@ export async function createOrder(input: {
       code,
       customerName: input.name,
       customerPhone: input.phone,
-      status: "aguardando_pagamento" as const,
+      status: "solicitado" as const,
+      paymentStatus: "aguardando" as const,
+      paymentEvent: null,
       total,
       createdAt: new Date().toISOString(),
       trackingCode: "",
@@ -509,40 +538,100 @@ export async function releaseAsaasEvent(id: string) {
   await getPool().query("DELETE FROM asaas_events WHERE id = ?", [id]);
 }
 
-const ALREADY_PAID: OrderStatus[] = ["confirmado", "em_separacao", "enviado", "entregue"];
+function allowsPaymentChange(current: PaymentStatus, incoming: PaymentStatus) {
+  if (current === incoming) {
+    return true;
+  }
 
-export async function applyPaymentNotice(orderId: number, outcome: "paid" | "canceled" | "refunded") {
+  if (current === "estornado" || current === "contestado") {
+    return false;
+  }
+
+  if (current === "pago" && incoming !== "estornado" && incoming !== "contestado") {
+    return false;
+  }
+
+  return true;
+}
+
+function fulfillmentAfterPayment(
+  status: string,
+  payment: PaymentStatus,
+  currentPayment: PaymentStatus,
+): OrderStatus | null {
+  const waiting = status === "solicitado" || status === "aguardando_pagamento";
+
+  if (payment === "pago" && waiting) {
+    return "confirmado";
+  }
+
+  if (payment === "pago" && status === "cancelado" && currentPayment !== "pago") {
+    return "confirmado";
+  }
+
+  if (
+    (payment === "cancelado" || payment === "expirado" || payment === "recusado") &&
+    waiting
+  ) {
+    return "cancelado";
+  }
+
+  if (
+    (payment === "estornado" || payment === "contestado") &&
+    (waiting || status === "confirmado")
+  ) {
+    return "cancelado";
+  }
+
+  return null;
+}
+
+export async function notePaymentEvent(orderId: number, eventName: string) {
+  await ensureDatabase();
+  await getPool().query("UPDATE orders SET payment_event = ? WHERE id = ?", [
+    eventName.slice(0, 80),
+    orderId,
+  ]);
+}
+
+export async function applyPaymentNotice(
+  orderId: number,
+  nextPayment: PaymentStatus,
+  eventName: string,
+) {
   await ensureDatabase();
   const [rows] = await getPool().query<OrderRow[]>(
-    "SELECT id, status FROM orders WHERE id = ? LIMIT 1",
+    "SELECT id, status, payment_status FROM orders WHERE id = ? LIMIT 1",
     [orderId],
   );
-  const status = rows[0]?.status;
+  const row = rows[0];
 
-  if (!status) {
-    return;
+  if (!row) {
+    return { stockChanged: false };
   }
 
-  if (outcome === "paid") {
-    if (status === "rejeitado" || ALREADY_PAID.includes(status)) {
-      return;
-    }
+  const currentPayment = paymentStatus(row.payment_status);
 
-    await setOrderStatus(orderId, "confirmado");
-    return;
+  if (!allowsPaymentChange(currentPayment, nextPayment)) {
+    return { stockChanged: false };
   }
 
-  if (outcome === "canceled") {
-    if (status === "aguardando_pagamento" || status === "solicitado") {
-      await setOrderStatus(orderId, "cancelado");
-    }
+  await getPool().query(
+    "UPDATE orders SET payment_status = ?, payment_event = ? WHERE id = ?",
+    [nextPayment, eventName.slice(0, 80), orderId],
+  );
 
-    return;
+  const nextStatus = fulfillmentAfterPayment(row.status, nextPayment, currentPayment);
+  const changesFulfillment = Boolean(nextStatus && nextStatus !== orderStatus(row.status));
+
+  if (changesFulfillment && nextStatus) {
+    await setOrderStatus(orderId, nextStatus);
   }
 
-  if (status === "confirmado" || status === "aguardando_pagamento" || status === "solicitado") {
-    await setOrderStatus(orderId, "cancelado");
-  }
+  return {
+    stockChanged:
+      changesFulfillment && (nextStatus === "cancelado" || row.status === "cancelado"),
+  };
 }
 
 export async function setOrderTracking(orderId: number, trackingCode: string) {

@@ -7,12 +7,10 @@ export function OrderDecision({
   orderId,
   back = "detalhe",
   confirm = true,
-  awaitPayment = false,
 }: {
   orderId: number;
   back?: "lista" | "detalhe";
   confirm?: boolean;
-  awaitPayment?: boolean;
 }) {
   const [state, action, pending] = useActionState(decideOrder, {});
 
@@ -20,17 +18,6 @@ export function OrderDecision({
     <form action={action} className="flex flex-wrap items-center gap-3">
       <input type="hidden" name="id" value={orderId} />
       <input type="hidden" name="back" value={back} />
-      {awaitPayment ? (
-        <button
-          type="submit"
-          name="decision"
-          value="aguardar"
-          disabled={pending}
-          className="h-11 border border-black/15 px-4 text-sm font-medium disabled:opacity-60 dark:border-white/20"
-        >
-          Aguardando pagamento
-        </button>
-      ) : null}
       {confirm ? (
         <button
           type="submit"

@@ -131,13 +131,7 @@ export async function decideOrder(
   const id = Number(formData.get("id"));
   const decision = String(formData.get("decision") ?? "");
   const status: OrderStatus | null =
-    decision === "confirmar"
-      ? "confirmado"
-      : decision === "rejeitar"
-        ? "rejeitado"
-        : decision === "aguardar"
-          ? "aguardando_pagamento"
-          : null;
+    decision === "confirmar" ? "confirmado" : decision === "rejeitar" ? "rejeitado" : null;
 
   if (!status || !Number.isInteger(id) || id <= 0) {
     return { message: "Não foi possível atualizar o pedido." };

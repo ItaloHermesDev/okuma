@@ -4,6 +4,7 @@ import { Suspense } from "react";
 import { OrderDecision } from "@/components/admin/order-decision";
 import { OrderStatusForm } from "@/components/admin/order-status-form";
 import { TrackingForm } from "@/components/admin/tracking-form";
+import { OrderTimeline, PaymentStatusCard } from "@/components/order-progress";
 import { formatBrl, formatDate, formatPhone, supplyLabel } from "@/lib/format";
 import { listOrders } from "@/lib/orders";
 
@@ -25,7 +26,7 @@ async function Order({ params }: { params: Promise<{ id: string }> }) {
   }
 
   return (
-    <main className="mx-auto flex w-full max-w-3xl flex-col gap-6 px-6 py-8">
+    <main className="mx-auto flex w-full max-w-5xl flex-col gap-6 px-6 py-8">
       <Link href="/admin/pedidos" className="text-sm text-zinc-500">
         Voltar aos pedidos
       </Link>
@@ -45,35 +46,40 @@ async function Order({ params }: { params: Promise<{ id: string }> }) {
       ) : (
         <p className="text-sm text-zinc-500">Pedido sob demanda. Não há baixa de estoque.</p>
       )}
-      {order.status === "solicitado" || order.status === "aguardando_pagamento" ? (
-        <OrderDecision
-          orderId={order.id}
-          awaitPayment={order.status === "solicitado"}
-        />
-      ) : (
-        <div className="flex flex-col gap-4">
-          <OrderStatusForm orderId={order.id} status={order.status} />
-          {order.status !== "rejeitado" &&
-          order.status !== "cancelado" &&
-          order.status !== "entregue" ? (
-            <OrderDecision orderId={order.id} confirm={false} />
+      <div className="grid items-start gap-4 sm:grid-cols-2">
+        <PaymentStatusCard status={order.paymentStatus} event={order.paymentEvent}>
+          {order.paymentUrl && order.paymentStatus === "aguardando" ? (
+            <a href={order.paymentUrl} target="_blank" rel="noreferrer" className="mt-3 block break-all text-sm text-white">
+              Abrir link de pagamento
+            </a>
           ) : null}
-        </div>
-      )}
-      {order.paymentUrl &&
-      (order.status === "aguardando_pagamento" || order.status === "solicitado") ? (
-        <p className="text-sm">
-          Link de pagamento:{" "}
-          <a href={order.paymentUrl} target="_blank" rel="noreferrer" className="break-all">
-            {order.paymentUrl}
-          </a>
-        </p>
-      ) : null}
+        </PaymentStatusCard>
+        <section className="border border-white/15 p-4">
+          <h2 className="text-lg font-medium">Andamento</h2>
+          <div className="mt-4">
+            <OrderTimeline status={order.status} />
+          </div>
+          <div className="mt-4">
+            <OrderStatusForm orderId={order.id} status={order.status} />
+          </div>
+          {order.status === "solicitado" ? (
+            <div className="mt-4">
+              <OrderDecision orderId={order.id} />
+            </div>
+          ) : order.status !== "rejeitado" &&
+            order.status !== "cancelado" &&
+            order.status !== "entregue" ? (
+            <div className="mt-4">
+              <OrderDecision orderId={order.id} confirm={false} />
+            </div>
+          ) : null}
+        </section>
+      </div>
       {order.status === "rejeitado" || order.status === "cancelado" ? null : (
         <TrackingForm orderId={order.id} trackingCode={order.trackingCode} />
       )}
       <section className="border border-black/10 p-4 dark:border-white/15">
-        <h2 className="text-lg font-medium">Comprovante de pagamento</h2>
+        <h2 className="text-lg font-medium">Comprovante enviado pelo cliente</h2>
         {order.paymentReceipt ? (
           <div className="mt-3">
             {/\.(jpe?g|png|webp)$/i.test(order.paymentReceipt) ? (

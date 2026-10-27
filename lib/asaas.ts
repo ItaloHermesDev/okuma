@@ -2,13 +2,15 @@ import "server-only";
 import { timingSafeEqual } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
+import { checkoutPageUrl } from "./checkout-url";
 import {
   applyPaymentNotice,
   claimAsaasEvent,
   findOrderForPayment,
+  notePaymentEvent,
   releaseAsaasEvent,
 } from "./orders";
-import type { OrderView } from "./store-types";
+import type { OrderView, PaymentStatus } from "./store-types";
 
 export class AsaasError extends Error {}
 
@@ -37,6 +39,37 @@ const CANCEL_EVENTS = new Set([
   "PAYMENT_DELETED",
 ]);
 const REFUND_EVENTS = new Set(["PAYMENT_REFUNDED", "PAYMENT_CHARGEBACK_REQUESTED"]);
+
+function paymentStatusForEvent(eventName: string): PaymentStatus | null {
+  if (PAID_EVENTS.has(eventName)) {
+    return "pago";
+  }
+
+  if (eventName === "CHECKOUT_EXPIRED") {
+    return "expirado";
+  }
+
+  if (
+    eventName === "PAYMENT_REPROVED_BY_RISK_ANALYSIS" ||
+    eventName === "PAYMENT_CREDIT_CARD_CAPTURE_REFUSED"
+  ) {
+    return "recusado";
+  }
+
+  if (CANCEL_EVENTS.has(eventName)) {
+    return "cancelado";
+  }
+
+  if (eventName === "PAYMENT_REFUNDED") {
+    return "estornado";
+  }
+
+  if (REFUND_EVENTS.has(eventName)) {
+    return "contestado";
+  }
+
+  return null;
+}
 
 function envValue(name: string) {
   const fromProcess = process.env[name]?.trim() ?? "";
@@ -183,7 +216,7 @@ export async function createStoreCheckout(order: OrderView, origin: string) {
     result = await postAsaas("/checkouts", checkoutBody(order, base, ["CREDIT_CARD"]));
   }
 
-  if (!result.ok || !result.payload.id || !result.payload.link) {
+  if (!result.ok || !result.payload.id) {
     if (result.payload.id) {
       await postAsaas(`/checkouts/${result.payload.id}/cancel`, {}).catch(() => undefined);
     }
@@ -191,7 +224,8 @@ export async function createStoreCheckout(order: OrderView, origin: string) {
     throw new AsaasError(failureMessage(result.payload, result.status));
   }
 
-  return { id: result.payload.id, link: result.payload.link };
+  const sandbox = asaasConfig().base.includes("sandbox");
+  return { id: result.payload.id, link: checkoutPageUrl(result.payload.id, sandbox) };
 }
 
 export async function cancelStoreCheckout(checkoutId: string) {
@@ -226,28 +260,15 @@ export async function receiveAsaasEvent(notice: AsaasNotice) {
       return { status: 200 as const, stockChanged: false };
     }
 
-    if (PAID_EVENTS.has(eventName)) {
-      const reopened = order.status === "cancelado";
-      await applyPaymentNotice(order.id, "paid");
-      return { status: 200 as const, stockChanged: reopened };
+    const paymentStatus = paymentStatusForEvent(eventName);
+
+    if (!paymentStatus) {
+      await notePaymentEvent(order.id, eventName);
+      return { status: 200 as const, stockChanged: false };
     }
 
-    if (CANCEL_EVENTS.has(eventName)) {
-      const waiting = order.status === "aguardando_pagamento" || order.status === "solicitado";
-      await applyPaymentNotice(order.id, "canceled");
-      return { status: 200 as const, stockChanged: waiting };
-    }
-
-    if (REFUND_EVENTS.has(eventName)) {
-      const reversible =
-        order.status === "confirmado" ||
-        order.status === "aguardando_pagamento" ||
-        order.status === "solicitado";
-      await applyPaymentNotice(order.id, "refunded");
-      return { status: 200 as const, stockChanged: reversible };
-    }
-
-    return { status: 200 as const, stockChanged: false };
+    const result = await applyPaymentNotice(order.id, paymentStatus, eventName);
+    return { status: 200 as const, stockChanged: result.stockChanged };
   } catch (error) {
     await releaseAsaasEvent(eventId);
     throw error;

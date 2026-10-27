@@ -4,7 +4,8 @@ import Link from "next/link";
 import { WhatsappForm } from "@/components/admin/whatsapp-form";
 import { PRODUCTION_SITE } from "@/lib/asaas";
 import { getCurrentAdmin, getDatabaseStatus } from "@/lib/auth";
-import { formatBrl, formatDate, statusLabel } from "@/lib/format";
+import { OrderStatusPill, PaymentStatusPill } from "@/components/order-progress";
+import { formatBrl, formatDate } from "@/lib/format";
 import { getShopOverview, listOrders } from "@/lib/orders";
 import { getStoreSettingsFresh } from "@/lib/store";
 
@@ -72,8 +73,9 @@ async function Dashboard() {
           {webhookToken || "Defina ASAAS_WEBHOOK_TOKEN no ambiente. Não use a chave da API."}
         </p>
         <p className="mt-4 text-sm leading-6 text-zinc-500">
-          Eventos: CHECKOUT_PAID, CHECKOUT_CANCELED, CHECKOUT_EXPIRED, PAYMENT_CONFIRMED,
-          PAYMENT_RECEIVED, PAYMENT_REFUNDED. O header enviado pelo Asaas é asaas-access-token.
+          Esses eventos atualizam só o pagamento do pedido: CHECKOUT_PAID, CHECKOUT_CANCELED,
+          CHECKOUT_EXPIRED, PAYMENT_CONFIRMED, PAYMENT_RECEIVED, PAYMENT_REFUNDED. O header
+          enviado pelo Asaas é asaas-access-token.
         </p>
       </section>
       <section className="border border-black/10 p-5 dark:border-white/10">
@@ -101,8 +103,10 @@ async function Dashboard() {
             >
               <span>
                 {order.code} · {order.customerName}
-                <span className="mt-1 block text-zinc-500">
-                  {statusLabel(order.status)} · {formatDate(order.createdAt)}
+                <span className="mt-2 flex flex-wrap items-center gap-2 text-zinc-500">
+                  <OrderStatusPill status={order.status} />
+                  <PaymentStatusPill status={order.paymentStatus} />
+                  {formatDate(order.createdAt)}
                 </span>
               </span>
               <span>{formatBrl(order.total)}</span>

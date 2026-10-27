@@ -34,8 +34,7 @@ async function Orders() {
     <main className="mx-auto flex w-full max-w-3xl flex-col gap-4 px-4 py-10">
       <h1 className="text-3xl font-semibold">Meus pedidos</h1>
       <p className="text-sm leading-6 text-white/60">
-        Esta lista vem dos pedidos salvos na loja. O status muda quando o pagamento é confirmado
-        e quando a equipe atualiza a entrega.
+        Cada pedido mostra o pagamento, vindo do Asaas, e o andamento, atualizado pela loja.
       </p>
       {orders.length === 0 ? (
         <div className="mt-4">

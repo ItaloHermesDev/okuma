@@ -18,7 +18,7 @@ export function OrderStatusForm({
     <form action={action} className="flex flex-wrap items-end gap-3">
       <input type="hidden" name="id" value={orderId} />
       <label className="grid gap-2 text-sm">
-        Status
+        Andamento do pedido
         <select
           name="status"
           defaultValue={status}

@@ -1,14 +1,47 @@
-import type { OrderStatus, OrderView, Product, SupplyType } from "./store-types";
+import type { OrderStatus, OrderView, PaymentStatus, Product, SupplyType } from "./store-types";
 
 const STATUS_LABEL: Record<OrderStatus, string> = {
   solicitado: "Solicitado",
-  aguardando_pagamento: "Aguardando pagamento",
   confirmado: "Confirmado",
   em_separacao: "Em separação",
   enviado: "Enviado",
   entregue: "Entregue",
   cancelado: "Cancelado",
   rejeitado: "Rejeitado",
+};
+
+const PAYMENT_STATUS_LABEL: Record<PaymentStatus, string> = {
+  aguardando: "Aguardando",
+  pago: "Pago",
+  recusado: "Recusado",
+  expirado: "Expirado",
+  cancelado: "Cancelado",
+  estornado: "Estornado",
+  contestado: "Contestado",
+};
+
+const PAYMENT_STATUS_DETAIL: Record<PaymentStatus, string> = {
+  aguardando: "O Asaas ainda não confirmou este pagamento.",
+  pago: "O Asaas confirmou o pagamento.",
+  recusado: "O Asaas recusou a tentativa de pagamento.",
+  expirado: "O prazo do checkout acabou sem pagamento.",
+  cancelado: "O checkout ou a cobrança foi cancelado no Asaas.",
+  estornado: "O valor pago foi estornado.",
+  contestado: "O pagamento do cartão foi contestado.",
+};
+
+const PAYMENT_EVENT_LABEL: Record<string, string> = {
+  CHECKOUT_CREATED: "Checkout criado",
+  CHECKOUT_PAID: "Checkout pago",
+  CHECKOUT_CANCELED: "Checkout cancelado",
+  CHECKOUT_EXPIRED: "Checkout expirado",
+  PAYMENT_CONFIRMED: "Pagamento confirmado",
+  PAYMENT_RECEIVED: "Pagamento recebido",
+  PAYMENT_REFUNDED: "Pagamento estornado",
+  PAYMENT_CHARGEBACK_REQUESTED: "Chargeback solicitado",
+  PAYMENT_REPROVED_BY_RISK_ANALYSIS: "Recusado na análise de risco",
+  PAYMENT_CREDIT_CARD_CAPTURE_REFUSED: "Captura do cartão recusada",
+  PAYMENT_DELETED: "Cobrança removida",
 };
 
 export function formatBrl(value: number) {
@@ -39,6 +72,18 @@ export function supplyLabel(supplyType: SupplyType) {
 
 export function statusLabel(status: OrderStatus) {
   return STATUS_LABEL[status];
+}
+
+export function paymentStatusLabel(status: PaymentStatus) {
+  return PAYMENT_STATUS_LABEL[status];
+}
+
+export function paymentStatusDetail(status: PaymentStatus) {
+  return PAYMENT_STATUS_DETAIL[status];
+}
+
+export function paymentEventLabel(event: string) {
+  return PAYMENT_EVENT_LABEL[event] ?? event.replaceAll("_", " ").toLowerCase();
 }
 
 export function coverImage(product: Product) {

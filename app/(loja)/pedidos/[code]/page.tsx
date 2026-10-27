@@ -9,9 +9,9 @@ import { getStoreSettings } from "@/lib/store";
 
 const RETURN_NOTES: Record<string, string> = {
   enviado:
-    "Se o pagamento foi concluído, esta página muda para confirmado quando o Asaas enviar a confirmação. A chegada nesta tela não marca o pedido como pago.",
-  cancelado: "O pagamento foi interrompido. Se o link ainda estiver válido, use Pagar agora.",
-  expirado: "O link de pagamento expirou. Se o pedido seguir aguardando, fale com a loja.",
+    "A volta do checkout não marca o pagamento como pago. O quadro Pagamento muda quando o Asaas confirma.",
+  cancelado: "O pagamento foi interrompido. Se o quadro Pagamento seguir aguardando, use Pagar agora.",
+  expirado: "O link de pagamento expirou. O quadro Pagamento mostra o status recebido do Asaas.",
 };
 
 export default function OrderPage({
@@ -62,8 +62,8 @@ async function OrderRoute({
       </Link>
       <h1 className="mb-2 mt-4 text-3xl font-semibold">Pedido {order.code}</h1>
       <p className="mb-6 text-sm text-white/60">
-        O andamento abaixo é o status salvo do pedido. Ele muda quando o Asaas confirma o pagamento
-        e quando a loja atualiza a entrega.
+        Pagamento e andamento ficam separados. O Asaas atualiza o pagamento. A loja atualiza a
+        separação, o envio e a entrega.
       </p>
       {returnNote ? <p className="mb-6 text-sm text-[#f5c518]">{returnNote}</p> : null}
       <OrderSummary

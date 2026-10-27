@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { Suspense } from "react";
 import { OrderDecision } from "@/components/admin/order-decision";
-import { formatBrl, formatDate, formatPhone, statusLabel } from "@/lib/format";
+import { OrderStatusPill, PaymentStatusPill } from "@/components/order-progress";
+import { formatBrl, formatDate, formatPhone } from "@/lib/format";
 import { listOrders } from "@/lib/orders";
 
 export const metadata = { title: "Pedidos" };
@@ -27,19 +28,18 @@ async function Orders() {
               <span className="block font-medium">
                 {order.code} · {order.customerName}
               </span>
+              <span className="mt-2 flex flex-wrap gap-2">
+                <OrderStatusPill status={order.status} />
+                <PaymentStatusPill status={order.paymentStatus} />
+              </span>
               <span className="mt-1 block text-sm text-zinc-500">
-                {statusLabel(order.status)} · {formatPhone(order.customerPhone)} ·{" "}
-                {formatDate(order.createdAt)} · {formatBrl(order.total)}
+                {formatPhone(order.customerPhone)} · {formatDate(order.createdAt)} · {formatBrl(order.total)}
                 {order.paymentReceipt ? " · Comprovante enviado" : ""}
                 {order.trackingCode ? ` · Rastreio ${order.trackingCode}` : ""}
               </span>
             </Link>
-            {order.status === "solicitado" || order.status === "aguardando_pagamento" ? (
-              <OrderDecision
-                orderId={order.id}
-                back="lista"
-                awaitPayment={order.status === "solicitado"}
-              />
+            {order.status === "solicitado" ? (
+              <OrderDecision orderId={order.id} back="lista" />
             ) : null}
           </div>
         ))}
