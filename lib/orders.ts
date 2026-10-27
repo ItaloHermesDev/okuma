@@ -13,6 +13,8 @@ import type {
 } from "./store-types";
 import { ORDER_STATUSES, PAYMENT_STATUSES } from "./store-types";
 
+export type { OrderStatus } from "./store-types";
+
 export class OrderError extends Error {}
 
 type OrderRow = RowDataPacket & {
@@ -77,13 +79,17 @@ function timestamp(value: Date | string) {
 const ORDER_COLUMNS =
   "id, code, customer_name, customer_phone, status, payment_status, payment_event, total, created_at, stock_held, tracking_code, payment_receipt, asaas_payment_url";
 
+export function isOrderStatus(value: string): value is OrderStatus {
+  return (ORDER_STATUSES as readonly string[]).includes(value);
+}
+
 function orderStatus(value: string): OrderStatus {
   if (value === "aguardando_pagamento") {
     return "solicitado";
   }
 
-  if ((ORDER_STATUSES as readonly string[]).includes(value)) {
-    return value as OrderStatus;
+  if (isOrderStatus(value)) {
+    return value;
   }
 
   return "solicitado";
@@ -445,10 +451,16 @@ export async function setOrderStatus(orderId: number, status: OrderStatus) {
       throw new OrderError("Pedido não encontrado.");
     }
 
-    if (order.status !== status) {
+    const storedStatus = order.status === "aguardando_pagamento" ? "solicitado" : order.status;
+
+    if (!isOrderStatus(storedStatus)) {
+      throw new OrderError("Status inválido.");
+    }
+
+    if (storedStatus !== status) {
       const releasesStock = (value: OrderStatus) =>
         value === "cancelado" || value === "rejeitado";
-      const wasReleased = releasesStock(order.status);
+      const wasReleased = releasesStock(storedStatus);
       const willRelease = releasesStock(status);
       const [stockItems] = await connection.query<RowDataPacket[]>(
         "SELECT id FROM order_items WHERE order_id = ? AND supply_type = 'estoque' LIMIT 1",

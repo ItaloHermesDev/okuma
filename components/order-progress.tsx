@@ -115,12 +115,12 @@ const PAYMENT_COLOR: Record<PaymentStatus, { dot: string; pill: string; panel: s
   },
 };
 
-function flowFor(status: OrderStatus) {
+function flowFor(status: OrderStatus): OrderStatus[] {
   if (status === "cancelado" || status === "rejeitado") {
-    return ["solicitado", status] as const;
+    return ["solicitado", status];
   }
 
-  return FLOW;
+  return [...FLOW];
 }
 
 export function OrderStatusPill({ status }: { status: OrderStatus }) {
